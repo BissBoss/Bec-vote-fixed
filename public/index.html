@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./events.css" />
+    <script src="./app.js" defer></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="description"
+      content="BEC Vote — bình chọn cho sự kiện bạn yêu thích."
+    />
+    <title>BEC Vote · Sự kiện BEC</title>
+  </head>
+  <body>
+    <!-- Fixed video background shared by every section and tab. -->
+    <div class="page-background" aria-hidden="true">
+      <video autoplay muted loop playsinline preload="auto" tabindex="-1">
+        <source src="/media/bec-background.mp4" type="video/mp4" />
+      </video>
+    </div>
+    <button class="background-toggle" id="background-toggle" type="button">
+      Tạm dừng nền
+    </button>
+    <header>
+      <a class="brand" href="#candidates"
+        ><img class="brand-logo" src="/media/bec-logo.jpg" alt="Logo BEC" />BEC<span class="light">vote</span></a
+      >
+      <nav aria-label="Điều hướng chính">
+        <a href="#candidates" data-tab="candidates" class="active">Sự kiện</a
+        ><a href="#ranking" data-tab="ranking">Bảng xếp hạng</a
+        ><a href="#history" data-tab="history">Phiếu của tôi</a>
+      </nav>
+      <button id="account" class="button dark">
+        Đăng nhập <span>↗</span>
+      </button>
+    </header>
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">
+            <span class="dot"></span> NHỮNG DẤU ẤN CỦA BEC
+          </p>
+          <h1>ECLIPSE AWARDS</h1>
+          <p class="intro">
+            Mỗi sự kiện viết nên một dấu ấn BEC.<br />Trao phiếu cho sự kiện
+            truyền cảm hứng đến bạn.
+          </p>
+          <a href="#candidates" class="button dark hero-link"
+            >Khám phá sự kiện <span>↘</span></a
+          >
+        </div>
+        <div class="hero-logo">
+          <img src="/media/bec-logo.jpg" alt="BEC — Business Economics Club" />
+        </div>
+      </section>
+      <section class="stats" aria-label="Thống kê">
+        <div>
+          <strong id="candidate-count">20</strong><span>Sự kiện BEC</span>
+        </div>
+        <div><strong id="vote-count">0</strong><span>Phiếu đã gửi</span></div>
+        <div><strong>01</strong><span>Phiếu duy nhất / Gmail</span></div>
+        <div class="quota">
+          <span id="quota-label">Tiếng nói của bạn có giá trị</span
+          ><b id="quota-text">Đăng nhập để trao phiếu ↗</b>
+        </div>
+      </section>
+      <section class="workspace">
+        <div class="section-top">
+          <div>
+            <p class="eyebrow" id="section-kicker">BEC EVENT HIGHLIGHTS</p>
+            <h2 id="section-title">Sự kiện nào để lại dấu ấn trong bạn?</h2>
+          </div>
+          <label class="search" id="search-wrap"
+            ><span>⌕</span
+            ><input
+              id="search"
+              type="search"
+              placeholder="Tìm tên hoặc mã sự kiện…"
+              aria-label="Tìm sự kiện"
+          /></label>
+        </div>
+        <div class="filters" id="filters" role="group" aria-label="Lọc sự kiện theo kỳ">
+          <button class="chip active" data-filter="Tất cả" aria-pressed="true">Tất cả sự kiện</button>
+        </div>
+        <div id="content" aria-live="polite">
+          <p>Đang tải danh sách sự kiện…</p>
+        </div>
+      </section>
+      <section class="how">
+        <div>
+          <span class="eyebrow">MỖI LỰA CHỌN ĐỀU CÓ Ý NGHĨA</span>
+          <h2>Một phiếu. Một dấu ấn.</h2>
+        </div>
+        <p>
+          Nhập Gmail, chọn sự kiện bạn yêu thích và xác nhận bình chọn.
+          <strong>Mỗi tài khoản chỉ được bình chọn một lần tổng cộng.</strong>
+          Phiếu đã gửi không thể thu hồi; lượt bình chọn không làm mới theo ngày.
+        </p>
+      </section>
+    </main>
+    <footer>
+      <a class="brand" href="#candidates"><img class="brand-logo" src="/media/bec-logo.jpg" alt="Logo BEC" />BEC<span class="light">vote</span></a>
+      <p>Bản mẫu trên laptop · Hình ảnh các sự kiện do BEC cung cấp.</p>
+      <span>Made for BEC ↗</span>
+    </footer>
+    <dialog id="modal">
+      <button class="close" aria-label="Đóng">×</button>
+      <div id="modal-content"></div>
+    </dialog>
+    <div id="toast" role="status"></div>
+  </body>
+</html>

@@ -1,0 +1,212 @@
+/* Posters stay fully visible. Adjust hover effects in this file. */
+.brand-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: 10px;
+  border: 1px solid #d1a55b77;
+  flex-shrink: 0;
+}
+
+.hero-logo {
+  width: min(100%, 430px);
+  justify-self: center;
+}
+
+.hero-logo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 18px;
+  border: 1px solid #d1a55b66;
+  box-shadow: 0 18px 50px #0007;
+}
+
+#account {
+  max-width: 230px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+@media (max-width: 620px) {
+  .brand-logo {
+    width: 36px;
+    height: 36px;
+  }
+  #account {
+    max-width: 150px;
+  }
+}
+
+@media (max-width: 760px) {
+  header {
+    height: auto;
+    padding: 18px 0;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  header nav {
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+  }
+  #account {
+    flex-shrink: 0;
+  }
+}
+
+.event-card {
+  display: flex;
+  flex-direction: column;
+  transition: transform 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
+}
+
+.event-cover {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: #080808;
+  cursor: zoom-in;
+}
+
+.event-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: transform 350ms ease, filter 350ms ease;
+}
+
+.event-image-hint {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 8px 12px;
+  border: 1px solid #e3bd7a77;
+  border-radius: 6px;
+  background: #080808e8;
+  color: #ffe3af;
+  font-size: 12px;
+  opacity: 0;
+  transform: translateY(5px);
+  transition: opacity 240ms ease, transform 240ms ease;
+}
+
+.event-card .card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.event-card h3 {
+  line-height: 1.45;
+}
+
+.event-card .profile-link {
+  font: inherit;
+}
+
+.event-card .card-bottom {
+  margin-top: auto;
+}
+
+.event-card:focus-within {
+  border-color: #e3bd7a;
+  box-shadow: 0 12px 32px #0006;
+}
+
+.event-cover:focus-visible {
+  outline: 2px solid #ffe3af;
+  outline-offset: -4px;
+}
+
+.event-cover:focus-visible .event-image-hint {
+  opacity: 1;
+  transform: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .event-card:hover {
+    transform: translateY(-6px);
+    border-color: #e3bd7acc;
+    box-shadow: 0 18px 40px #0008, 0 0 22px #d4a45b20;
+  }
+
+  .event-card:hover .event-cover img {
+    transform: scale(1.025);
+    filter: brightness(1.08);
+  }
+
+  .event-card:hover .event-image-hint {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+dialog.event-modal {
+  width: min(1100px, calc(100% - 32px));
+  max-width: 1100px;
+  background: #101018;
+  color: #f7f5f0;
+}
+
+.event-detail-image {
+  display: block;
+  width: 100%;
+  max-height: 65vh;
+  object-fit: contain;
+  background: #070709;
+  border-radius: 8px;
+}
+
+dialog.event-modal .close,
+dialog.event-modal .muted {
+  color: #d8d4cc;
+}
+
+.mini-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: inherit;
+  background: #080808;
+}
+
+@media (hover: none) {
+  .event-image-hint {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .event-card,
+  .event-cover img,
+  .event-image-hint {
+    transition: none;
+  }
+
+  .event-card:hover,
+  .event-card:hover .event-cover img {
+    transform: none;
+  }
+}
+.chip {
+  transition: background-color 180ms ease, border-color 180ms ease;
+}
+
+.chip:hover,
+.chip:focus-visible {
+  border-color: var(--lime);
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: 3px;
+}
