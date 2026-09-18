@@ -11,6 +11,7 @@ import { vietnamDay } from "./time.mjs";
 import { events as candidates } from "./events.mjs";
 import { gmailIdentity } from "./gmail.mjs";
 import { isAllowedOrigin } from "./origin.mjs";
+import { createAdmin } from "./admin.mjs";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 // Configure the public HTTPS origin when deploying behind a web server.
@@ -145,6 +146,10 @@ async function body(req) {
 function fail(message, status = 400) {
   throw Object.assign(new Error(message), { status });
 }
+const admin = createAdmin({
+  db, events: candidates, archivedEvents: archivedCandidates, readBody: body,
+  secure: Boolean(secureCookie) || process.env.NODE_ENV === "production" || process.env.RENDER === "true",
+});
 const server = http.createServer(async (req, res) => {
   const send = (status, data, headers = {}) => {
     res.writeHead(status, {
@@ -162,6 +167,9 @@ const server = http.createServer(async (req, res) => {
       !isAllowedOrigin(req, publicOrigin)
     )
       return send(403, { error: "Nguồn yêu cầu không hợp lệ." });
+    if (url.pathname.startsWith("/api/admin/")) {
+      return await admin(req, url, send);
+    }
     const token = req.headers.cookie
       ?.split(";")
       .map((x) => x.trim())
@@ -342,9 +350,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (
       req.method === "GET" &&
-      ["/", "/app.js", "/style.css", "/events.css"].includes(url.pathname)
+      ["/", "/app.js", "/style.css", "/events.css", "/admin", "/admin/", "/admin.js", "/admin.css"].includes(url.pathname)
     ) {
-      const file = url.pathname === "/" ? "index.html" : url.pathname.slice(1);
+      const file = url.pathname === "/" ? "index.html"
+        : ["/admin", "/admin/"].includes(url.pathname) ? "admin.html" : url.pathname.slice(1);
       res.writeHead(200, {
         "Content-Type": file.endsWith(".js")
           ? "text/javascript; charset=utf-8"
@@ -352,6 +361,8 @@ const server = http.createServer(async (req, res) => {
             ? "text/css; charset=utf-8"
             : "text/html; charset=utf-8",
         "X-Content-Type-Options": "nosniff",
+        "Cache-Control": "no-store",
+        "Referrer-Policy": "same-origin",
         "Content-Security-Policy":
           "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
       });

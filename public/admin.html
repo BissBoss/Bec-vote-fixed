@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Quản trị · BEC Vote</title>
+    <link rel="stylesheet" href="/admin.css" />
+    <script src="/admin.js" defer></script>
+  </head>
+  <body>
+    <header><a href="/">BEC <span>VOTE</span></a><span>QUẢN TRỊ VIÊN</span></header>
+    <main>
+      <section id="login" class="login panel">
+        <p class="eyebrow">KHU VỰC RIÊNG</p>
+        <h1>Đăng nhập quản trị</h1>
+        <p class="muted">Nhập mật khẩu để xem danh sách người bình chọn và số liệu.</p>
+        <form id="login-form">
+          <label for="password">Mật khẩu quản trị</label>
+          <input id="password" type="password" autocomplete="current-password" required maxlength="512" />
+          <button type="submit">Đăng nhập →</button>
+        </form>
+      </section>
+      <p id="message" role="status" aria-live="polite"></p>
+      <section id="dashboard" hidden>
+        <div class="heading"><div><p class="eyebrow">BEC COMMUNITY</p><h1>Tổng quan bình chọn</h1></div>
+          <div class="actions"><button id="refresh" class="secondary">Làm mới</button><button id="logout" class="secondary">Đăng xuất</button></div>
+        </div>
+        <p class="muted" id="updated"></p>
+        <div class="controls panel">
+          <label>Kỳ bình chọn<select id="term"><option value="">Tất cả các kỳ</option></select></label>
+          <label>Tìm người hoặc sự kiện<input id="search" type="search" placeholder="Nhập Gmail hoặc tên sự kiện…" /></label>
+        </div>
+        <div id="summary" class="summary"></div>
+        <section class="panel"><h2>Số phiếu theo sự kiện</h2><p class="muted">Thống kê theo kỳ đang chọn. Ô tìm kiếm chỉ lọc danh sách phiếu bên dưới.</p><div id="ranking"></div></section>
+        <section class="panel"><h2>Danh sách phiếu đã gửi</h2><p class="muted">Gmail do người bình chọn tự nhập, chưa xác minh qua Google.</p>
+          <p id="result-count"></p><div class="table-wrap"><table><thead><tr><th>Gmail</th><th>Kỳ</th><th>Sự kiện</th><th>Thời gian (Việt Nam)</th></tr></thead><tbody id="rows"></tbody></table></div>
+          <div class="pagination"><button id="previous" class="secondary">← Trước</button><span id="page"></span><button id="next" class="secondary">Sau →</button></div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>
