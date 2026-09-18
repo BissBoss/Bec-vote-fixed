@@ -29,7 +29,7 @@ test("Gmail aliases share a voting identity", () => {
   assert.equal(gmailIdentity("bad..address@gmail.com"), null);
 });
 
-test("One lifetime vote: concurrency, retries, aliases, restart and old accounts", async () => {
+test("One vote per term: concurrency, retries, aliases, restart and old accounts", async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "bec-vote-test-"));
   let child, base, cookie = "";
   async function start() {
@@ -78,7 +78,7 @@ test("One lifetime vote: concurrency, retries, aliases, restart and old accounts
     assert.equal((await request("/api/vote", { candidateId: 101, requestId: crypto.randomUUID() })).status, 401);
     assert.equal((await request("/api/login", { email: "test@example.com" })).status, 400);
     assert.equal((await request("/api/login", { email: "bec.test@gmail.com" })).status, 200);
-    assert.equal((await request("/api/state")).data.remaining, 1);
+    assert.equal((await request("/api/state")).data.remaining, 2);
     const keys = Array.from({ length: 8 }, () => crypto.randomUUID());
     const results = await Promise.all(keys.map((requestId) => request("/api/vote", { candidateId: 101, requestId })));
     assert.equal(results.filter((r) => r.status === 200).length, 1);
@@ -88,7 +88,7 @@ test("One lifetime vote: concurrency, retries, aliases, restart and old accounts
     assert.equal((await request("/api/vote", { candidateId: 102, requestId: winner })).status, 409);
     await request("/api/logout", {});
     assert.equal((await request("/api/login", { email: "B.E.C.TEST+new@gmail.com" })).status, 200);
-    assert.equal((await request("/api/state")).data.remaining, 0);
+    assert.equal((await request("/api/state")).data.quotas.SPR26.remaining, 0);
     assert.equal((await request("/api/vote", { candidateId: 102, requestId: crypto.randomUUID() })).status, 409);
     await stop();
     const db = new DatabaseSync(path.join(dir, "bec-vote.sqlite"));
@@ -101,19 +101,31 @@ test("One lifetime vote: concurrency, retries, aliases, restart and old accounts
     }
     db.close();
     await start();
-    assert.equal((await request("/api/state")).data.remaining, 0);
+    assert.equal((await request("/api/state")).data.quotas.SPR26.remaining, 0);
     assert.equal((await request("/api/vote", { candidateId: 102, requestId: crypto.randomUUID() })).status, 409);
     await request("/api/logout", {});
     await request("/api/login", { email: "oldaccount+alias@gmail.com" });
     const oldState = (await request("/api/state")).data;
-    assert.equal(oldState.remaining, 0);
+    assert.equal(oldState.quotas.SPR26.remaining, 0);
     assert.equal(oldState.history.length, 3);
     assert.equal((await request("/api/vote", { candidateId: 102, requestId: crypto.randomUUID() })).status, 409);
     await request("/api/logout", {});
     await request("/api/login", { email: "anotheraccount@gmail.com" });
-    assert.equal((await request("/api/state")).data.remaining, 1);
+    assert.equal((await request("/api/state")).data.remaining, 2);
     assert.equal((await request("/api/vote", { candidateId: 112, requestId: crypto.randomUUID() })).status, 200);
-    assert.equal((await request("/api/vote", { candidateId: 101, requestId: crypto.randomUUID() })).status, 409);
+    assert.equal((await request("/api/vote", { candidateId: 113, requestId: crypto.randomUUID() })).status, 409);
+    assert.equal((await request("/api/vote", { candidateId: 101, requestId: crypto.randomUUID() })).status, 200);
+    assert.equal((await request("/api/state")).data.remaining, 0);
+    await request("/api/logout", {});
+    await request("/api/login", { email: "b.e.c.test+summer@gmail.com" });
+    const summerResults = await Promise.all(Array.from({ length: 6 }, (_, i) =>
+      request("/api/vote", { candidateId: 112 + i, requestId: crypto.randomUUID() })
+    ));
+    assert.equal(summerResults.filter((r) => r.status === 200).length, 1);
+    assert.equal(summerResults.filter((r) => r.status === 409).length, 5);
+    await stop();
+    await start();
+    assert.equal((await request("/api/state")).data.remaining, 0);
     const logo = await fetch(base + "/media/bec-logo.jpg");
     assert.equal(logo.status, 200);
     assert.equal(logo.headers.get("content-type"), "image/jpeg");

@@ -79,7 +79,7 @@ async function refresh() {
     ? `Xin chào, ${state.user.name}`
     : "Tiếng nói của bạn có giá trị";
   $("#quota-text").textContent = state.user
-    ? (state.remaining ? "Bạn có 1 phiếu duy nhất" : "Bạn đã bình chọn")
+    ? (state.remaining ? `Bạn còn phiếu ở ${state.remaining} kỳ` : "Bạn đã bình chọn đủ các kỳ")
     : "Đăng nhập để trao phiếu ↗";
   render();
 }
@@ -105,7 +105,7 @@ function auth() {
   show(`
     <p class="eyebrow">BEC COMMUNITY</p>
     <h2 class="modal-title">Đăng nhập bằng Gmail</h2>
-    <p class="muted">Mỗi tài khoản Gmail có một phiếu duy nhất.</p>
+    <p class="muted">Mỗi Gmail được chọn một sự kiện trong mỗi kỳ.</p>
     <form class="form" id="auth-form">
       <label>Địa chỉ Gmail
         <input type="email" name="email" autocomplete="email"
@@ -125,7 +125,7 @@ function auth() {
       await api("/api/login", Object.fromEntries(new FormData(e.target)));
       await refresh();
       modal.close();
-      toast(state.remaining ? "Đăng nhập thành công. Bạn có một phiếu duy nhất." : "Tài khoản này đã bình chọn.");
+      toast(state.remaining ? "Đăng nhập thành công. Mỗi kỳ bạn có một phiếu." : "Tài khoản này đã bình chọn.");
     } catch (error) {
       $("#auth-error").textContent = error.message;
     } finally {
@@ -136,7 +136,7 @@ function auth() {
 $("#account").onclick = () => {
   if (!state?.user) return auth();
   show(
-    `<p class="eyebrow">TÀI KHOẢN CỦA BẠN</p><h2 class="modal-title">${esc(state.user.name)}</h2><p class="muted">${esc(state.user.email)}</p><p>${state.remaining ? "Bạn còn <strong>1 phiếu duy nhất</strong>." : "Bạn đã sử dụng phiếu bình chọn duy nhất."}</p><button class="button dark full" id="logout">Đăng xuất</button>`,
+    `<p class="eyebrow">TÀI KHOẢN CỦA BẠN</p><h2 class="modal-title">${esc(state.user.name)}</h2><p class="muted">${esc(state.user.email)}</p><p>${quotaSummary()}</p><button class="button dark full" id="logout">Đăng xuất</button>`,
   );
   $("#logout").onclick = async () => {
     try {
@@ -148,16 +148,21 @@ $("#account").onclick = () => {
     }
   };
 };
+function quotaSummary() {
+  return Object.entries(state.quotas).map(([term, quota]) =>
+    esc(term) + ": " + (quota.remaining ? "Còn 1 phiếu" : "Đã bình chọn")
+  ).join("<br>");
+}
 function vote(id) {
   if (!state.user) return auth();
   const c = state.candidates.find((c) => c.id === id);
-  if (!state.remaining)
+  if (!state.quotas[c.term].remaining)
     return toast(
-      "Bạn đã bình chọn. Mỗi tài khoản Gmail chỉ được bình chọn một lần.",
+      `Bạn đã bình chọn trong kỳ ${c.term}. Hãy chọn sự kiện ở kỳ còn phiếu.`,
     );
   const requestId = crypto.randomUUID();
   show(
-    `<p class="eyebrow">XÁC NHẬN BÌNH CHỌN</p><h2 class="modal-title">Trao một phiếu cho<br>${esc(c.name)}?</h2><p class="muted">Mã ${c.number} · ${esc(c.team)}</p><p class="muted">Đây là <strong>phiếu duy nhất</strong> của tài khoản Gmail này. Phiếu đã xác nhận không thể thu hồi.</p><p class="error" id="vote-error" role="alert"></p><button class="button dark full" id="confirm-vote">Xác nhận · 1 phiếu ↗</button>`,
+    `<p class="eyebrow">XÁC NHẬN BÌNH CHỌN</p><h2 class="modal-title">Trao một phiếu cho<br>${esc(c.name)}?</h2><p class="muted">Mã ${c.number} · ${esc(c.team)}</p><p class="muted">Đây là <strong>phiếu duy nhất trong kỳ ${esc(c.term)}</strong> của tài khoản Gmail này. Phiếu đã xác nhận không thể thu hồi.</p><p class="error" id="vote-error" role="alert"></p><button class="button dark full" id="confirm-vote">Xác nhận · 1 phiếu ↗</button>`,
   );
   $("#confirm-vote").onclick = async (e) => {
     const b = e.currentTarget;
@@ -209,7 +214,9 @@ function eventCard(c) {
         <div class="card-bottom">
           <span class="vote-total"><b>${fmt(c.votes)}</b> phiếu</span>
           <button class="vote-button" data-vote="${c.id}"
-            aria-label="Bình chọn cho ${esc(c.name)}">Bình chọn ↗</button>
+            aria-label="Bình chọn cho ${esc(c.name)}"
+            ${state.user && !state.quotas[c.term].remaining ? "disabled" : ""}>
+            ${state.user && !state.quotas[c.term].remaining ? "Đã vote kỳ " + esc(c.term) : "Bình chọn ↗"}</button>
         </div>
       </div>
     </article>

@@ -41,9 +41,19 @@ for (const account of db.prepare("SELECT id,email FROM users WHERE identity_key 
 }
 db.exec("CREATE INDEX IF NOT EXISTS users_identity ON users(identity_key)");
 const votesForIdentity = db.prepare(`
-  SELECT COUNT(*) AS n FROM votes
+  SELECT candidate_id FROM votes
   WHERE user_id IN (SELECT id FROM users WHERE identity_key=?)
 `);
+const terms = [...new Set(candidates.map((event) => event.term))];
+function termQuotas(identity) {
+  const votes = identity ? votesForIdentity.all(identity) : [];
+  return Object.fromEntries(terms.map((term) => {
+    const used = votes.filter((vote) =>
+      candidates.some((event) => event.id === vote.candidate_id && event.term === term),
+    ).length;
+    return [term, { used, remaining: used ? 0 : 1 }];
+  }));
+}
 const archivedCandidates = [
   {
     id: 1,
@@ -171,12 +181,14 @@ const server = http.createServer(async (req, res) => {
           "SELECT candidate_id,COUNT(*) AS total FROM votes GROUP BY candidate_id",
         )
         .all();
-      const used = user ? votesForIdentity.get(user.identity_key).n : 0;
+      const quotas = termQuotas(user?.identity_key);
+      const used = Object.values(quotas).reduce((total, quota) => total + quota.used, 0);
       return send(200, {
         user: user || null,
         day,
         used,
-        remaining: Math.max(0, 1 - used),
+        quotas,
+        remaining: Object.values(quotas).reduce((total, quota) => total + quota.remaining, 0),
         archivedCandidates: archivedCandidates.map(({ id, name, initials, color }) => ({ id, name, initials, color })),
         candidates: candidates.map((c) => ({
           ...c,
@@ -259,8 +271,9 @@ const server = http.createServer(async (req, res) => {
           return send(200, { ok: true, replayed: true });
         }
         const day = vietnamDay();
-        if (votesForIdentity.get(user.identity_key).n >= 1) {
-          fail("Tài khoản Gmail này đã bình chọn. Mỗi tài khoản chỉ được bình chọn một lần.", 409);
+        const term = candidates.find((event) => event.id === id).term;
+        if (!termQuotas(user.identity_key)[term].remaining) {
+          fail(`Bạn đã bình chọn trong kỳ ${term}. Mỗi Gmail chỉ được chọn một sự kiện trong mỗi kỳ.`, 409);
         }
         db.prepare(
           "INSERT INTO votes(user_id,candidate_id,day,request_id,created_at) VALUES(?,?,?,?,?)",

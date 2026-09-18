@@ -10,7 +10,7 @@ Cần Node.js 24 trở lên. Nhấp đúp `START-BEC.cmd`, hoặc chạy `node s
 
 - 11 sự kiện có ảnh thật, tìm tên có hoặc không dấu, xem poster lớn và hiệu ứng hover.
 - Đăng nhập bằng một ô Gmail, không mật khẩu. Đây là địa chỉ tự khai, chưa xác minh quyền sở hữu qua Google hoặc OTP. Phiên dùng cookie HttpOnly, hết hạn sau 7 ngày.
-- Mỗi Gmail chỉ có một phiếu tổng cộng, không làm mới theo ngày. Các biến thể dấu chấm và +tag của cùng Gmail dùng chung hạn mức.
+- Mỗi Gmail chỉ có một phiếu mỗi kỳ, không làm mới theo ngày. Các biến thể dấu chấm và +tag của cùng Gmail dùng chung hạn mức.
 - Máy chủ kiểm tra giới hạn trong giao dịch SQLite. Cùng mã yêu cầu gửi lại chỉ tính một phiếu.
 - Bảng xếp hạng có đồng hạng, lịch sử 100 phiếu gần nhất, dữ liệu cập nhật mỗi 30 giây.
 
@@ -34,4 +34,4 @@ Máy chủ chỉ lắng nghe trên laptop tại 127.0.0.1. Chỉ nhập Gmail kh
 - Đặt ảnh vào `public/media/events/`, điền tên file vào `image`.
 - Dùng ID mới chưa trùng; không đổi ID sự kiện đã có phiếu.
 - Khởi động lại máy chủ sau khi sửa danh sách. Nút lọc tự lấy các kỳ từ danh sách sự kiện.
-- Phân kỳ chỉ phục vụ bộ lọc, không cấp thêm phiếu: mỗi Gmail vẫn có một phiếu tổng cộng.
+- Mỗi Gmail được chọn một sự kiện trong mỗi kỳ. Phiếu cũ được tính theo kỳ của sự kiện; không đổi kỳ của sự kiện đã có phiếu.
