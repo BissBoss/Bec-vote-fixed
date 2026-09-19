@@ -9,7 +9,7 @@ máy chủ kiểm tra phiên quản trị, độc lập với đăng nhập Gmai
 Trong phần Environment của dịch vụ đang chạy repository này, thêm:
 
 - `ADMIN_PASSWORD`: mật khẩu riêng đủ mạnh, ít nhất 12 ký tự (khuyến nghị 20 ký tự ngẫu nhiên).
-- `PUBLIC_ORIGIN`: địa chỉ HTTPS chính của website, ví dụ `https://aclipseawardbec.io.vn`.
+- `PUBLIC_ORIGIN`: địa chỉ HTTPS chính của website, ví dụ `https://eclipseawardbec.io.vn`.
 
 Lưu cấu hình và triển khai lại dịch vụ. Không đặt mật khẩu trong code, GitHub,
 HTML, hoặc file `.env.example`. Không có mật khẩu hoặc dưới 12 ký tự thì quyền
@@ -32,11 +32,11 @@ bình chọn vẫn hoạt động. Giới hạn dùng chung để không tin đ�
 Gmail là địa chỉ người dùng tự khai báo, chưa được xác minh qua Google.
 Gmail có dấu chấm hoặc hậu tố + được gộp theo danh tính dùng để kiểm tra phiếu.
 Phiếu thuộc sự kiện cũ không có kỳ được hiển thị trong mục Lưu trữ, không bị xóa.
-Số liệu lấy từ cơ sở dữ liệu hiện tại của máy chủ. Cần giữ `DATA_DIR` trên ổ lưu
-trữ bền vững để phiếu không mất sau khi hosting triển khai lại.
+Số liệu lấy trực tiếp từ Supabase, nên vẫn được giữ nguyên sau khi Render deploy lại.
 
 ## Chạy trên laptop
 
-Tạo `.env` (đã được gitignore), đặt ADMIN_PASSWORD, rồi chạy
+Tạo `.env` (đã được gitignore), đặt `ADMIN_PASSWORD`, `SUPABASE_URL` và
+`SUPABASE_SERVICE_ROLE_KEY`, rồi chạy
 `node --env-file=.env server.mjs`. Dùng PUBLIC_ORIGIN phù hợp với địa chỉ truy cập.
 Kiểm thử bằng `npm test`; các kiểm thử dùng dữ liệu tạm, không sửa phiếu thực tế.

@@ -4,7 +4,7 @@ const hash = (value) => createHash("sha256").update(value).digest();
 const sessionKey = (value) => hash(value).toString("hex");
 
 // Sessions are deliberately invalidated on restart or password change.
-export function createAdmin({ db, events, archivedEvents, readBody, secure }) {
+export function createAdmin({ listVotes, events, archivedEvents, readBody, secure }) {
   const password = process.env.ADMIN_PASSWORD || "";
   const enabled = password.length >= 12;
   const passwordHash = hash(password);
@@ -50,15 +50,12 @@ export function createAdmin({ db, events, archivedEvents, readBody, secure }) {
       return send(404, { error: "Không tìm thấy nội dung." });
     }
     const catalog = new Map([...archivedEvents, ...events].map((event) => [event.id, event]));
-    const votes = db.prepare(`
-      SELECT v.id, v.candidate_id, v.created_at, u.email, u.identity_key
-      FROM votes v JOIN users u ON u.id=v.user_id ORDER BY v.id DESC
-    `).all().map((vote) => {
-      const event = catalog.get(vote.candidate_id);
+    const votes = (await listVotes()).map((vote) => {
+      const event = catalog.get(Number(vote.candidate_id));
       return {
-        id: vote.id, email: vote.identity_key || vote.email,
-        eventId: vote.candidate_id, event: event?.name || "Sự kiện đã lưu",
-        term: event?.term || "Lưu trữ", createdAt: vote.created_at,
+        id: vote.id, email: vote.voter_id,
+        eventId: Number(vote.candidate_id), event: event?.name || "Sự kiện đã lưu",
+        term: vote.category || event?.term || "Lưu trữ", createdAt: vote.created_at,
       };
     });
     return send(200, {

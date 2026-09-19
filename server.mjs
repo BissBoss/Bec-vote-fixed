@@ -1,10 +1,9 @@
 import http from "node:http";
-import { DatabaseSync } from "node:sqlite";
 import {
   randomBytes,
   createHash,
 } from "node:crypto";
-import { createReadStream, mkdirSync, readFileSync, statSync } from "node:fs";
+import { createReadStream, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { vietnamDay } from "./time.mjs";
@@ -12,6 +11,7 @@ import { events as candidates } from "./events.mjs";
 import { gmailIdentity } from "./gmail.mjs";
 import { isAllowedOrigin } from "./origin.mjs";
 import { createAdmin } from "./admin.mjs";
+import { SupabaseStore } from "./supabase.mjs";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 // Configure the public HTTPS origin when deploying behind a web server.
@@ -20,37 +20,13 @@ const publicOrigin = process.env.PUBLIC_ORIGIN
   : null;
 const secureCookie = publicOrigin?.startsWith("https://") ? "; Secure" : "";
 const listenHost = process.env.HOST || "127.0.0.1";
-mkdirSync(process.env.DATA_DIR || path.join(root, "data"), { recursive: true });
-const db = new DatabaseSync(
-  path.join(process.env.DATA_DIR || path.join(root, "data"), "bec-vote.sqlite"),
-);
-db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
-CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, salt TEXT NOT NULL, hash TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY, user_id INTEGER REFERENCES users(id), expires INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS votes(id INTEGER PRIMARY KEY, user_id INTEGER REFERENCES users(id), candidate_id INTEGER NOT NULL, day TEXT NOT NULL, request_id TEXT NOT NULL, created_at TEXT NOT NULL, UNIQUE(user_id,request_id));
-CREATE INDEX IF NOT EXISTS votes_day ON votes(user_id,day);`);
-
-// Preserve old accounts/votes and group Gmail aliases under one identity.
-if (!db.prepare("PRAGMA table_info(users)").all().some((column) => column.name === "identity_key")) {
-  db.exec("ALTER TABLE users ADD COLUMN identity_key TEXT");
-}
-for (const account of db.prepare("SELECT id,email FROM users WHERE identity_key IS NULL").all()) {
-  db.prepare("UPDATE users SET identity_key=? WHERE id=?").run(
-    gmailIdentity(account.email) || account.email.trim().toLowerCase(),
-    account.id,
-  );
-}
-db.exec("CREATE INDEX IF NOT EXISTS users_identity ON users(identity_key)");
-const votesForIdentity = db.prepare(`
-  SELECT candidate_id FROM votes
-  WHERE user_id IN (SELECT id FROM users WHERE identity_key=?)
-`);
+const store = new SupabaseStore();
 const terms = [...new Set(candidates.map((event) => event.term))];
-function termQuotas(identity) {
-  const votes = identity ? votesForIdentity.all(identity) : [];
+async function termQuotas(identity) {
+  const votes = identity ? await store.listVotes(identity) : [];
   return Object.fromEntries(terms.map((term) => {
     const used = votes.filter((vote) =>
-      candidates.some((event) => event.id === vote.candidate_id && event.term === term),
+      vote.category === term,
     ).length;
     return [term, { used, remaining: used ? 0 : 1 }];
   }));
@@ -147,7 +123,8 @@ function fail(message, status = 400) {
   throw Object.assign(new Error(message), { status });
 }
 const admin = createAdmin({
-  db, events: candidates, archivedEvents: archivedCandidates, readBody: body,
+  listVotes: () => store.listVotes(), events: candidates,
+  archivedEvents: archivedCandidates, readBody: body,
   secure: Boolean(secureCookie) || process.env.NODE_ENV === "production" || process.env.RENDER === "true",
 });
 const server = http.createServer(async (req, res) => {
@@ -175,21 +152,25 @@ const server = http.createServer(async (req, res) => {
       .map((x) => x.trim())
       .find((x) => x.startsWith("bec_session="))
       ?.slice(12);
-    const user = token
-      ? db
-          .prepare(
-            "SELECT u.id,u.name,u.email,u.identity_key FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.expires>?",
-          )
-          .get(digest(token), Date.now())
-      : null;
+    const session = token ? await store.session(digest(token), Date.now()) : null;
+    const user = session ? {
+      name: session.voter_id.split("@")[0],
+      email: session.voter_id,
+      identity_key: session.voter_id,
+    } : null;
     if (req.method === "GET" && url.pathname === "/api/state") {
       const day = vietnamDay();
-      const counts = db
-        .prepare(
-          "SELECT candidate_id,COUNT(*) AS total FROM votes GROUP BY candidate_id",
-        )
-        .all();
-      const quotas = termQuotas(user?.identity_key);
+      const allVotes = await store.listVotes();
+      const counts = new Map();
+      for (const vote of allVotes) {
+        const id = Number(vote.candidate_id);
+        counts.set(id, (counts.get(id) || 0) + 1);
+      }
+      const userVotes = user ? allVotes.filter((vote) => vote.voter_id === user.identity_key) : [];
+      const quotas = Object.fromEntries(terms.map((term) => {
+        const used = userVotes.filter((vote) => vote.category === term).length;
+        return [term, { used, remaining: used ? 0 : 1 }];
+      }));
       const used = Object.values(quotas).reduce((total, quota) => total + quota.used, 0);
       return send(200, {
         user: user || null,
@@ -200,15 +181,13 @@ const server = http.createServer(async (req, res) => {
         archivedCandidates: archivedCandidates.map(({ id, name, initials, color }) => ({ id, name, initials, color })),
         candidates: candidates.map((c) => ({
           ...c,
-          votes: counts.find((x) => x.candidate_id === c.id)?.total || 0,
+          votes: counts.get(c.id) || 0,
         })),
-        history: user
-          ? db
-              .prepare(
-                "SELECT id,candidate_id,created_at FROM votes WHERE user_id IN (SELECT id FROM users WHERE identity_key=?) ORDER BY id DESC LIMIT 100",
-              )
-              .all(user.identity_key)
-          : [],
+        history: userVotes.slice(0, 100).map((vote) => ({
+          id: vote.id,
+          candidate_id: Number(vote.candidate_id),
+          created_at: vote.created_at,
+        })),
       });
     }
     if (
@@ -219,21 +198,8 @@ const server = http.createServer(async (req, res) => {
       const b = await body(req);
       const email = gmailIdentity(b.email);
       if (!email) fail("Vui lòng nhập địa chỉ Gmail hợp lệ, ví dụ tenban@gmail.com.");
-      let account = db.prepare("SELECT id FROM users WHERE identity_key=? ORDER BY id LIMIT 1").get(email);
-      if (!account) {
-        // Legacy password columns remain for database compatibility only.
-        const result = db.prepare(
-          "INSERT INTO users(name,email,salt,hash,identity_key) VALUES(?,?,?,?,?)",
-        ).run(email.split("@")[0], email, "", "", email);
-        account = { id: Number(result.lastInsertRowid) };
-      }
       const session = randomBytes(32).toString("hex");
-      db.prepare("DELETE FROM sessions WHERE expires<?").run(Date.now());
-      db.prepare("INSERT INTO sessions VALUES(?,?,?)").run(
-        digest(session),
-        account.id,
-        Date.now() + 7 * 86400000,
-      );
+      await store.createSession(digest(session), email, Date.now() + 7 * 86400000);
       return send(
         200,
         { ok: true },
@@ -243,8 +209,7 @@ const server = http.createServer(async (req, res) => {
       );
     }
     if (req.method === "POST" && url.pathname === "/api/logout") {
-      if (token)
-        db.prepare("DELETE FROM sessions WHERE token=?").run(digest(token));
+      if (token) await store.deleteSession(digest(token));
       return send(
         200,
         { ok: true },
@@ -265,33 +230,31 @@ const server = http.createServer(async (req, res) => {
         !/^[\w-]{16,100}$/.test(requestId)
       )
         fail("Phiếu bình chọn không hợp lệ.");
-      db.exec("BEGIN IMMEDIATE");
-      try {
-        const previous = db
-          .prepare(
-            "SELECT candidate_id FROM votes WHERE user_id=? AND request_id=?",
-          )
-          .get(user.id, requestId);
-        if (previous) {
-          if (previous.candidate_id !== id)
-            fail("Mã yêu cầu đã được dùng cho sự kiện khác.", 409);
-          db.exec("COMMIT");
-          return send(200, { ok: true, replayed: true });
-        }
-        const day = vietnamDay();
-        const term = candidates.find((event) => event.id === id).term;
-        if (!termQuotas(user.identity_key)[term].remaining) {
-          fail(`Bạn đã bình chọn trong kỳ ${term}. Mỗi Gmail chỉ được chọn một sự kiện trong mỗi kỳ.`, 409);
-        }
-        db.prepare(
-          "INSERT INTO votes(user_id,candidate_id,day,request_id,created_at) VALUES(?,?,?,?,?)",
-        ).run(user.id, id, day, requestId, new Date().toISOString());
-        db.exec("COMMIT");
-        return send(200, { ok: true });
-      } catch (e) {
-        db.exec("ROLLBACK");
-        throw e;
+      const previous = await store.voteByRequest(user.identity_key, requestId);
+      if (previous) {
+        if (Number(previous.candidate_id) !== id)
+          fail("Mã yêu cầu đã được dùng cho sự kiện khác.", 409);
+        return send(200, { ok: true, replayed: true });
       }
+      const day = vietnamDay();
+      const term = candidates.find((event) => event.id === id).term;
+      const quotas = await termQuotas(user.identity_key);
+      if (!quotas[term].remaining) {
+        fail(`Bạn đã bình chọn trong kỳ ${term}. Mỗi Gmail chỉ được chọn một sự kiện trong mỗi kỳ.`, 409);
+      }
+      const result = await store.insertVote({
+        voter_id: user.identity_key,
+        candidate_id: id,
+        category: term,
+        request_id: requestId,
+        created_at: new Date().toISOString(),
+      });
+      if (result === "replayed") return send(200, { ok: true, replayed: true });
+      if (result === "request-conflict") fail("Mã yêu cầu đã được dùng cho sự kiện khác.", 409);
+      if (result === "quota-conflict") {
+        fail(`Bạn đã bình chọn trong kỳ ${term}. Mỗi Gmail chỉ được chọn một sự kiện trong mỗi kỳ.`, 409);
+      }
+      return send(200, { ok: true, day });
     }
     // Only serve images listed in the event catalog.
     const eventImage = url.pathname === "/media/bec-logo.jpg"

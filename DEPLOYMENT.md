@@ -1,12 +1,12 @@
-# Public website: aclipseawardbec.io.vn
+# Public website: eclipseawardbec.io.vn
 
 Status: configuration prepared locally; website not deployed and DNS not changed.
 
 ## Hosting requirements
 
-- Node.js 24 or newer with `node:sqlite` support.
+- Node.js 24 or newer.
 - A continuously running Node.js process.
-- Persistent writable storage for `data/bec-vote.sqlite`.
+- A Supabase project initialized with `supabase-setup.sql`.
 - HTTPS, with requests forwarded to the application's port.
 - Run a single application instance for this SQLite deployment.
 
@@ -14,9 +14,9 @@ The domain is registered at iNET. Hosting/VPS availability must be confirmed bef
 
 ## Environment
 
-See `.env.example`. Configure `PUBLIC_ORIGIN=https://aclipseawardbec.io.vn` on the server so HTTPS form requests are accepted and session cookies use `Secure`. Set `HOST`, `PORT`, and `DATA_DIR` according to hosting requirements. If storing the values in `.env`, start with `node --env-file=.env server.mjs`.
+Configure `PUBLIC_ORIGIN=https://eclipseawardbec.io.vn`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY` in Render. The Supabase secret must never be committed to GitHub or exposed to browser code.
 
-Do not place `.env`, the `data` folder, or SQLite backups in a public repository or static document root. Back up the database before transferring existing votes.
+Do not place `.env` or database exports in a public repository.
 
 ## Remaining deployment steps
 
